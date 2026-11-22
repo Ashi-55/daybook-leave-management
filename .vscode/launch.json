@@ -1,0 +1,7 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {"name":"Daybook browser","type":"chrome","request":"launch","url":"http://127.0.0.1:8130","webRoot":"${workspaceFolder}/dist/web","sourceMaps":true},
+    {"name":"Daybook API","type":"node","request":"launch","program":"${workspaceFolder}/scripts/start.mjs","cwd":"${workspaceFolder}","outFiles":["${workspaceFolder}/dist/api/*.cjs"],"skipFiles":["<node_internals>/**"]}
+  ]
+}

@@ -1,0 +1,382 @@
+<main *ngIf="loading" class="opening">Opening Daybook…</main>
+<div *ngIf="!loading && !s" class="login">
+  <section class="cover">
+    <div class="brand"><i>◫</i> Daybook</div>
+    <div class="covertext">
+      <small>TEAM LEAVE MANAGEMENT</small>
+      <h1>Time away,<br />planned together.</h1>
+      <p>Request leave, review balances and see who’s away at a glance.</p>
+    </div>
+    <div class="art" aria-hidden="true">
+      <div *ngFor="let day of weekdays">{{day}}</div>
+      <span
+        *ngFor="let n of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21]"
+        [class.mark]="[3,4,10,11,12,18].includes(n)"
+        >{{n}}</span
+      >
+    </div>
+  </section>
+  <section class="signin">
+    <small>WORKSPACE ACCESS</small>
+    <h2>Sign in to Daybook</h2>
+    <p>Choose a demo role or enter your credentials.</p>
+    <div class="roles">
+      <button
+        *ngFor="let r of ['Employee','Manager','Admin']"
+        [class.selected]="role===r"
+        (click)="select(r)"
+      >
+        {{r}}
+      </button>
+    </div>
+    <form (ngSubmit)="login()">
+      <label
+        >Email address<input
+          name="email"
+          type="email"
+          [(ngModel)]="email"
+          required
+          autocomplete="username" /></label
+      ><label
+        >Password<input
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          required
+          autocomplete="current-password"
+      /></label>
+      <p class="error" role="alert" *ngIf="error">{{error}}</p>
+      <button class="primary" [disabled]="busy">
+        {{busy?'Signing in…':'Sign in'}}
+      </button>
+    </form>
+  </section>
+</div>
+<div *ngIf="s" class="shell">
+  <aside>
+    <div class="brand"><i>◫</i> Daybook</div>
+    <small>WORKSPACE</small>
+    <nav>
+      <button
+        *ngFor="let item of tabs; index as i"
+        (click)="go(item)"
+        [class.active]="tab===item"
+      >
+        <b aria-hidden="true">{{['◫','☷','▦','⚙','≡'][i]}}</b>{{item}}
+      </button>
+    </nav>
+    <footer>
+      <strong>{{s.user.name}}</strong><span>{{s.user.role}}</span
+      ><button (click)="logout()" [disabled]="busy">Sign out</button>
+    </footer>
+  </aside>
+  <main class="workspace">
+    <header>
+      <div>
+        <small>LEAVE WORKSPACE</small>
+        <h1>{{tab}}</h1>
+      </div>
+      <button
+        *ngIf="s.user.role==='employee'"
+        class="primary"
+        (click)="modal=true;error='';note=''"
+      >
+        + Request leave
+      </button>
+    </header>
+    <p role="status" class="success" *ngIf="note">{{note}}</p>
+    <p role="alert" class="error" *ngIf="error && !modal">{{error}}</p>
+    <ng-container *ngIf="tab==='Overview'">
+      <section class="welcome">
+        <small>{{today | date:'EEEE, d MMMM y' | uppercase}}</small>
+        <h2>Hello, {{s.user.name.split(' ')[0]}}.</h2>
+        <p>
+          {{s.user.role==='employee'?'Your leave balances and upcoming time
+          away.':s.user.role==='manager'?'Review leave requests and plan
+          coverage for your team.':'Manage leave policies and review workspace
+          activity.'}}
+        </p>
+      </section>
+      <ng-container *ngIf="s.user.role==='employee';else teamStats"
+        ><div class="sectionhead">
+          <h2>Leave balances</h2>
+          <label
+            >Year
+            <input
+              class="year"
+              type="number"
+              min="1900"
+              max="9999"
+              [(ngModel)]="year"
+              (change)="changeYear()"
+          /></label>
+        </div>
+        <div class="cards">
+          <article *ngFor="let k of s.balances;index as i">
+            <small>{{k.name | uppercase}}</small>
+            <div class="number">
+              {{k.allowance-k.used-k.pending}} <span>days left</span>
+            </div>
+            <progress
+              [value]="k.used+k.pending"
+              [max]="k.allowance||1"
+              [style.accentColor]="['#447569','#ba7939','#7586ae'][i%3]"
+            ></progress>
+            <p>
+              {{k.used}} approved · {{k.pending}} pending · {{k.allowance}}
+              total
+            </p>
+          </article>
+        </div></ng-container
+      >
+      <ng-template #teamStats
+        ><div class="cards">
+          <article>
+            <small>AWAITING REVIEW</small>
+            <div class="number">{{pending}}</div>
+          </article>
+          <article>
+            <small>ALL REQUESTS</small>
+            <div class="number">{{s.history.length}}</div>
+          </article>
+          <article>
+            <small>TEAM DAILY LIMIT</small>
+            <div class="number">{{s.policy.capacity}} <span>people</span></div>
+          </article>
+        </div></ng-template
+      ></ng-container
+    >
+    <section
+      *ngIf="['Overview','Requests','Review requests'].includes(tab)"
+      class="panel"
+    >
+      <div class="sectionhead">
+        <h2>{{tab==='Overview'?'Recent requests':'Request history'}}</h2>
+        <button *ngIf="tab==='Overview'" (click)="go(tabs[1])">View all</button
+        ><select
+          *ngIf="tab!=='Overview'"
+          aria-label="Filter by status"
+          [(ngModel)]="filter"
+        >
+          <option
+            *ngFor="let v of ['All','pending','approved','rejected','cancelled']"
+          >
+            {{v}}
+          </option>
+        </select>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Leave / employee</th>
+              <th>Dates</th>
+              <th>Days</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of (tab==='Overview'?rows.slice(0,5):rows)">
+              <td>
+                <strong>{{r.kind}}</strong
+                ><span>{{r.employee}} · {{r.reason}}</span>
+              </td>
+              <td>
+                {{fmt(r.start)}}<ng-container *ngIf="r.end!==r.start">
+                  – {{fmt(r.end)}}</ng-container
+                >
+              </td>
+              <td>{{r.days}}</td>
+              <td><em [class]="r.status">{{r.status}}</em></td>
+              <td>
+                <ng-container
+                  *ngIf="s.user.role==='manager'&&r.status==='pending'"
+                  ><button [disabled]="busy" (click)="action('approve',r)">
+                    Approve
+                  </button>
+                  <button [disabled]="busy" (click)="action('reject',r)">
+                    Reject
+                  </button></ng-container
+                ><button
+                  *ngIf="s.user.role==='employee'&&['pending','approved'].includes(r.status)"
+                  [disabled]="busy"
+                  (click)="action('cancel',r)"
+                >
+                  Cancel
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p *ngIf="!rows.length">No requests match this view.</p>
+    </section>
+    <section *ngIf="tab==='Team calendar'" class="panel">
+      <div class="sectionhead">
+        <h2>{{monthName}}</h2>
+        <div>
+          <button aria-label="Previous month" (click)="moveMonth(-1)">‹</button>
+          <button aria-label="Next month" (click)="moveMonth(1)">›</button>
+        </div>
+      </div>
+      <p>
+        Select a date to see team availability. Pending leave reserves coverage.
+      </p>
+      <div class="calendar">
+        <small *ngFor="let w of weekdays">{{w}}</small
+        ><ng-container *ngFor="let c of cells"
+          ><button
+            *ngIf="c;else blank"
+            [class.selected]="chosenDay===c.day"
+            (click)="chosenDay=c.day"
+          >
+            {{c.n}}<span *ngIf="c.off.length">{{c.off.length}} off</span
+            ><span *ngIf="c.holiday">Holiday</span></button
+          ><ng-template #blank><div></div></ng-template
+        ></ng-container>
+      </div>
+      <section *ngIf="chosenDay">
+        <h3>{{fmt(chosenDay)}}</h3>
+        <ng-container *ngFor="let h of s.holidays"
+          ><p *ngIf="h.day===chosenDay">{{h.name}}</p></ng-container
+        >
+        <p>{{availability}}</p>
+      </section>
+    </section>
+    <ng-container *ngIf="tab==='Configuration'"
+      ><section class="panel">
+        <h2>Request policy</h2>
+        <form (ngSubmit)="action('policy',policy)">
+          <label
+            >Minimum notice (calendar days)<input
+              name="notice"
+              type="number"
+              min="0"
+              max="365"
+              required
+              [(ngModel)]="policy.notice" /></label
+          ><label
+            >Maximum team members off per working day<input
+              name="cap"
+              type="number"
+              min="1"
+              max="1000"
+              required
+              [(ngModel)]="policy.capacity" /></label
+          ><button class="primary" [disabled]="busy">Save policy</button>
+        </form>
+      </section>
+      <section class="panel">
+        <h2>Yearly allowances</h2>
+        <form
+          class="inline"
+          *ngFor="let k of s.balances"
+          (ngSubmit)="action('type',k)"
+        >
+          <label>Type<input name="name" [(ngModel)]="k.name" required /></label
+          ><label
+            >Days per year<input
+              type="number"
+              min="0"
+              max="366"
+              required
+              name="allowance"
+              [(ngModel)]="k.allowance" /></label
+          ><button [disabled]="busy">Save type</button>
+        </form>
+        <h3>Add leave type</h3>
+        <form class="inline" (ngSubmit)="action('type',newType)">
+          <label
+            >Name<input
+              name="name"
+              [(ngModel)]="newType.name"
+              required /></label
+          ><label
+            >Days per year<input
+              name="allowance"
+              type="number"
+              min="0"
+              max="366"
+              [(ngModel)]="newType.allowance"
+              required /></label
+          ><button [disabled]="busy">Add type</button>
+        </form>
+      </section></ng-container
+    >
+    <section *ngIf="tab==='Activity log'" class="panel">
+      <h2>Recent activity</h2>
+      <div class="scroll">
+        <table>
+          <tr>
+            <th>Time</th>
+            <th>Actor</th>
+            <th>Action</th>
+            <th>Record ID</th>
+          </tr>
+          <tr *ngFor="let a of s.audit">
+            <td>{{a.created | date:'medium'}}</td>
+            <td>{{a.name}}</td>
+            <td>{{a.action}}</td>
+            <td>{{a.target || '—'}}</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="backdrop" *ngIf="modal && s">
+  <section
+    class="dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="requestTitle"
+  >
+    <div class="sectionhead">
+      <h2 id="requestTitle">Request leave</h2>
+      <button aria-label="Close" (click)="modal=false">×</button>
+    </div>
+    <form (ngSubmit)="action('request',form)">
+      <label
+        >Leave type<select name="kind" [(ngModel)]="form.kind">
+          <option *ngFor="let k of s.balances" [ngValue]="k.id">
+            {{k.name}}
+          </option>
+        </select></label
+      >
+      <div class="inline">
+        <label
+          >Start date<input
+            name="start"
+            type="date"
+            required
+            [(ngModel)]="form.start" /></label
+        ><label
+          >End date<input
+            name="end"
+            type="date"
+            required
+            [(ngModel)]="form.end"
+        /></label>
+      </div>
+      <label
+        >Reason<textarea
+          name="reason"
+          required
+          maxlength="500"
+          [(ngModel)]="form.reason"
+        ></textarea>
+      </label>
+      <p>{{preview}} · Minimum notice {{s.policy.notice}} day(s)</p>
+      <p class="error" role="alert" *ngIf="error">{{error}}</p>
+      <button class="primary" [disabled]="busy">Submit request</button>
+    </form>
+  </section>
+</div>
+<div *ngIf="timedOut" class="backdrop">
+  <section class="dialog" role="alertdialog">
+    <h2>Session expired</h2>
+    <p>Sign in again to continue in your workspace.</p>
+    <button (click)="timedOut=false">Return to sign in</button>
+  </section>
+</div>
