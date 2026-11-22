@@ -48,6 +48,14 @@ Angular submits JSON over same-origin HTTP. NestJS authenticates the request, lo
 
 Start with `api/leave.ts` for rules, `api/main.ts` for HTTP and authentication, `api/schema.sql` for the schema and `web/main.ts` for the browser flow. The seed creates two managers, eight employees, one administrator, three leave types, a sample holiday list for three years and 40 mixed-state requests. The calendar is an example company calendar.
 
+## Vercel and Neon
+
+From the project directory run `npm run build:vercel`. The generated `dist/vercel` directory contains the Angular site and a Node function serving the NestJS API. Deploy from that directory. The local database launcher is excluded.
+
+Link that directory to a dedicated Daybook Vercel project using `npx vercel link`. Connect a new Neon database through the Vercel Marketplace and enable its pooled TLS `DATABASE_URL` for Production. Set a stable random `JWT_SECRET` of at least 32 characters in the project's server-side environment variables. HTTPS refresh cookies are enabled automatically on Vercel. The first API request initializes the schema and fictional demo records in this dedicated database. Keep real personnel records out of the shared demo accounts.
+
+Run `npx vercel deploy --prod` from the linked directory. Verify employee login, a persisted request after reloading, a manager decision and logout on the returned HTTPS URL.
+
 ## Verification
 
 ```sh

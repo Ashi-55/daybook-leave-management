@@ -3,5 +3,7 @@ __pycache__/
 node_modules/
 dist/
 .env
+.vercel/
+.env.*.local
 .pgdata/
 .test-pg*/

@@ -2,7 +2,7 @@ import { PoolClient } from "pg";
 import { hash } from "bcryptjs";
 import { readFileSync } from "node:fs";
 export async function initialize(db: PoolClient) {
-  await db.query(readFileSync("api/schema.sql", "utf8"));
+  await db.query(readFileSync(process.env.DAYBOOK_SCHEMA_PATH || "api/schema.sql", "utf8"));
   if ((await db.query("select id from policy")).rowCount) return;
   await db.query(
     "insert into policy values(1,1,2);insert into kinds(name,allowance) values('Annual leave',20),('Sick leave',12),('Unpaid leave',30)",

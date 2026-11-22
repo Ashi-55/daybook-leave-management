@@ -27,7 +27,8 @@ export async function createApp() {
     throw Error("Set DATABASE_URL and a JWT_SECRET of at least 32 characters.");
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    options: "-c timezone=UTC",
+    max: process.env.VERCEL ? 3 : 10,
+    connectionTimeoutMillis: 10000,
   });
   async function transaction<T>(
     work: (db: PoolClient) => Promise<T>,
@@ -38,6 +39,7 @@ export async function createApp() {
       await db.query(
         snapshot ? "begin isolation level repeatable read" : "begin",
       );
+      await db.query("set local time zone 'UTC'");
       const result = await work(db);
       await db.query("commit");
       return result;
@@ -50,15 +52,18 @@ export async function createApp() {
       db.release();
     }
   }
-  await transaction(async (db) => {
+  try { await transaction(async (db) => {
     await db.query("select pg_advisory_xact_lock(843195)");
     await initialize(db);
-  });
+  }); } catch (error) {
+    await pool.end();
+    throw error;
+  }
   const digest = (s: string) => createHash("sha256").update(s).digest("hex");
   const cookie = {
     httpOnly: true,
     sameSite: "strict",
-    secure: process.env.COOKIE_SECURE === "true",
+    secure: process.env.VERCEL === "1" || process.env.COOKIE_SECURE === "true",
     path: "/api/auth",
   };
   const rawCookie = (req: any) =>

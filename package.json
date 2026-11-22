@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Employee leave and team coverage",
   "scripts": {
+    "build:vercel": "npm run build && node scripts/package-vercel.mjs",
     "build": "tsc && node scripts/build.mjs",
     "start": "node scripts/start.mjs",
     "test": "npm run build && node --test tests/leave.test.mjs"
